@@ -1,0 +1,15 @@
+name: scam_checker
+description: Check suspicious messages, links and phone numbers.
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  crypto: ^3.0.3
+  shared_preferences: ^2.2.0
+  receive_sharing_intent: ^1.8.0
+flutter:
+  uses-material-design: true

@@ -1,0 +1,10 @@
+<!-- Add inside <manifest> -->
+<uses-permission android:name="android.permission.INTERNET"/>
+
+<!-- Add inside the main <activity> so the app appears in the Share menu -->
+<intent-filter>
+    <action android:name="android.intent.action.SEND"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <data android:mimeType="text/plain"/>
+</intent-filter>
+<!-- Also set android:launchMode="singleTask" on that <activity> -->
