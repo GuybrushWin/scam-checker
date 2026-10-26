@@ -1,0 +1,34 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Assemble project
+        run: |
+          mkdir -p app/lib
+          cp pubspec.yaml app/
+          cp main.dart family.dart rules.dart app/lib/
+          flutter create --platforms=android --project-name scam_checker /tmp/gen
+          cp -r /tmp/gen/android app/android
+          python3 - <<'EOF'
+          p = 'app/android/app/src/main/AndroidManifest.xml'
+          s = open(p).read()
+          s = s.replace('<application', '<uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+          s = s.replace('<intent-filter>', '<intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/><data android:mimeType="text/plain"/></intent-filter>\n            <intent-filter>', 1)
+          s = s.replace('android:launchMode="singleTop"', 'android:launchMode="singleTask"')
+          open(p, 'w').write(s)
+          EOF
+      - name: Build
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scam-checker-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
