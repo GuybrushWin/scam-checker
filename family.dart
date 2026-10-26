@@ -108,14 +108,25 @@ class _FamilyPageState extends State<FamilyPage> {
     final left = 30 - (now.toUtc().millisecondsSinceEpoch ~/ 1000) % 30;
     final code = codeFor(secret!, now);
     return [
-      Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
-        Text(t('Tu código ahora', 'Your code now')),
-        const SizedBox(height: 8),
-        Text('${code.substring(0, 3)} ${code.substring(3)}', style: const TextStyle(fontSize: 44, fontWeight: FontWeight.bold, letterSpacing: 4)),
-        LinearProgressIndicator(value: left / 30),
-        const SizedBox(height: 4),
-        Text(t('Cambia en $left s', 'Changes in $left s')),
-      ]))),
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFF6C7CFF), Color(0xFF22D3C5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(children: [
+          Text(t('TU CÓDIGO AHORA', 'YOUR CODE NOW'), style: const TextStyle(letterSpacing: 2, fontWeight: FontWeight.w600, color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 12),
+          Text('${code.substring(0, 3)}  ${code.substring(3)}', style: const TextStyle(fontSize: 52, fontWeight: FontWeight.w800, letterSpacing: 4, color: Colors.white)),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(value: left / 30, minHeight: 6, backgroundColor: Colors.white24, valueColor: const AlwaysStoppedAnimation(Colors.white)),
+          ),
+          const SizedBox(height: 8),
+          Text(t('Cambia en $left s', 'Changes in $left s'), style: const TextStyle(color: Colors.white70)),
+        ]),
+      ),
       const SizedBox(height: 16),
       Text(t('Cómo usarlo', 'How to use it'), style: const TextStyle(fontWeight: FontWeight.bold)),
       Text(t('• Si alguien dice ser familiar y pide algo urgente, pedile que te lea SU código.\n• Tiene que coincidir con el tuyo (puede variar un instante al cambiar).\n• Si no coincide o no puede darlo: cortá y llamá vos al número que ya tenías.\n• Nunca compartas el código del grupo por chat.',
