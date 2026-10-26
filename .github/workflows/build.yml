@@ -8,6 +8,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses || true
       - name: Assemble project
         run: |
           mkdir -p app/lib
@@ -16,13 +18,24 @@ jobs:
           flutter create --platforms=android --project-name scam_checker /tmp/gen
           cp -r /tmp/gen/android app/android
           python3 - <<'EOF'
+          import os
           p = 'app/android/app/src/main/AndroidManifest.xml'
           s = open(p).read()
           s = s.replace('<application', '<uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
           s = s.replace('<intent-filter>', '<intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/><data android:mimeType="text/plain"/></intent-filter>\n            <intent-filter>', 1)
           s = s.replace('android:launchMode="singleTop"', 'android:launchMode="singleTask"')
           open(p, 'w').write(s)
+          for f in ['app/build.gradle.kts', 'app/build.gradle']:
+              q = os.path.join('app/android', f)
+              if os.path.exists(q):
+                  t = open(q).read()
+                  t = t.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 37')
+                  t = t.replace('compileSdkVersion flutter.compileSdkVersion', 'compileSdkVersion 37')
+                  t = t.replace('compileSdk flutter.compileSdkVersion', 'compileSdk 37')
+                  open(q, 'w').write(t)
+          open('app/android/gradle.properties', 'a').write('\nandroid.suppressUnsupportedCompileSdk=37\n')
           EOF
+          grep -n compileSdk app/android/app/build.gradle* || true
       - name: Build
         working-directory: app
         run: |
