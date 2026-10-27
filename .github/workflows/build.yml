@@ -14,7 +14,17 @@ jobs:
         run: |
           mkdir -p app/lib
           cp pubspec.yaml app/
-          cp main.dart family.dart rules.dart app/lib/
+          python3 - <<'PY'
+          import glob, re, shutil
+          for stem in ('main', 'family', 'rules', 'config'):
+              best, bn = None, -1
+              for f in glob.glob(stem + '*.dart'):
+                  m = re.fullmatch(stem + r'(\d*)\.dart', f)
+                  if m and int(m.group(1) or 0) > bn:
+                      best, bn = f, int(m.group(1) or 0)
+              print('using', best, 'for', stem)
+              shutil.copy(best, 'app/lib/' + stem + '.dart')
+          PY
           flutter create --platforms=android --project-name scam_checker /tmp/gen
           cp -r /tmp/gen/android app/android
           python3 - <<'EOF'
@@ -35,7 +45,50 @@ jobs:
                   open(q, 'w').write(t)
           open('app/android/gradle.properties', 'a').write('\nandroid.suppressUnsupportedCompileSdk=37\n')
           EOF
-          grep -n compileSdk app/android/app/build.gradle* || true
+      - name: Make launcher icon
+        run: |
+          pip install pillow
+          python3 - <<'EOF'
+          from PIL import Image, ImageDraw, ImageFilter, ImageChops, ImageOps
+          import os, shutil
+          S = 2048
+          def X(x): return S * (.15 + .7 * x)
+          def Y(y): return S * (.15 + .7 * y)
+          def bez(a, b, c, d, n=80):
+              out = []
+              for i in range(n + 1):
+                  t = i / n; u = 1 - t
+                  out.append((u**3*a[0]+3*u*u*t*b[0]+3*u*t*t*c[0]+t**3*d[0], u**3*a[1]+3*u*u*t*b[1]+3*u*t*t*c[1]+t**3*d[1]))
+              return out
+          def pt(x, y): return (X(x), Y(y))
+          shield = (bez(pt(.5,.04),pt(.66,.16),pt(.82,.17),pt(.92,.18)) + bez(pt(.92,.18),pt(.92,.62),pt(.76,.85),pt(.5,.97))
+                    + bez(pt(.5,.97),pt(.24,.85),pt(.08,.62),pt(.08,.18)) + bez(pt(.08,.18),pt(.18,.17),pt(.34,.16),pt(.5,.04)))
+          vg = Image.linear_gradient('L').resize((S, S))
+          g = ImageChops.add(vg.point(lambda v: v // 2), vg.transpose(Image.TRANSPOSE).point(lambda v: v // 2))
+          img = Image.composite(Image.new('RGB', (S, S), (0, 196, 255)), Image.new('RGB', (S, S), (98, 48, 255)), g)
+          rg = ImageOps.invert(Image.radial_gradient('L').resize((S * 2, S * 2))).crop((int(.8 * S), int(.85 * S), int(1.8 * S), int(1.85 * S)))
+          img.paste(Image.new('RGB', (S, S), (255, 255, 255)), (0, 0), rg.point(lambda v: int(v * .16)))
+          bg = img.copy()
+          sh = Image.new('L', (S, S), 0); ImageDraw.Draw(sh).polygon([(x, y + S * .028) for x, y in shield], fill=110)
+          img.paste(Image.new('RGB', (S, S), (25, 10, 90)), (0, 0), sh.filter(ImageFilter.GaussianBlur(S * .022)))
+          m = Image.new('L', (S, S), 0); ImageDraw.Draw(m).polygon(shield, fill=255)
+          img.paste(Image.new('RGB', (S, S), (255, 255, 255)), (0, 0), m)
+          m2 = m.copy(); ImageDraw.Draw(m2).rectangle((0, 0, S // 2, S), fill=0)
+          img.paste(Image.new('RGB', (S, S), (226, 230, 255)), (0, 0), m2)
+          tick = [pt(.31, .5), pt(.45, .64), pt(.70, .36)]; w = int(S * .068)
+          tm = Image.new('L', (S, S), 0); td = ImageDraw.Draw(tm)
+          td.line(tick, fill=255, width=w, joint='curve')
+          for x, y in (tick[0], tick[-1]): td.ellipse((x - w/2, y - w/2, x + w/2, y + w/2), fill=255)
+          img.paste(bg, (0, 0), tm)
+          final = img.resize((1024, 1024), Image.LANCZOS)
+          res = 'app/android/app/src/main/res'
+          if os.path.isdir(res):
+              for dd in [x for x in os.listdir(res) if x.startswith('mipmap-anydpi')]:
+                  shutil.rmtree(os.path.join(res, dd))
+          for name, sz in {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}.items():
+              os.makedirs(f'{res}/mipmap-{name}', exist_ok=True)
+              final.resize((sz, sz), Image.LANCZOS).save(f'{res}/mipmap-{name}/ic_launcher.png')
+          EOF
       - name: Build
         working-directory: app
         run: |
